@@ -23,6 +23,8 @@ export default function Home() {
     messageLog,
     promotionEngine,
     initializeGame,
+    restartGame,
+    returnToMenu,
     nextTurn,
     selectEventOption,
     dismissEvent,
@@ -54,9 +56,8 @@ export default function Home() {
       <GameOverScreen
         status={status === GameStatus.WON ? 'won' : 'lost'}
         message={lastMessage?.message}
-        onRestart={() => {
-          window.location.reload();
-        }}
+        onRestart={restartGame}
+        onReturnToMenu={returnToMenu}
       />
     );
   }

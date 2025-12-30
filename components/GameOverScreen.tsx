@@ -4,9 +4,10 @@ interface GameOverScreenProps {
   status: 'won' | 'lost';
   message?: string;
   onRestart: () => void;
+  onReturnToMenu: () => void;
 }
 
-export const GameOverScreen: React.FC<GameOverScreenProps> = ({ status, message, onRestart }) => {
+export const GameOverScreen: React.FC<GameOverScreenProps> = ({ status, message, onRestart, onReturnToMenu }) => {
   const isWin = status === 'won';
 
   return (
@@ -62,7 +63,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ status, message,
           </button>
           
           <button
-            onClick={() => window.location.reload()}
+            onClick={onReturnToMenu}
             className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-all"
           >
             返回主菜单

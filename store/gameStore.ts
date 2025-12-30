@@ -144,8 +144,18 @@ interface GameStore extends GameState {
   promotionEngine: PromotionEngine;
   failureEngine: FailureEngine;
 
+  // 初始游戏参数（用于重新开始）
+  initialGameParams: {
+    name: string;
+    party: Party;
+    faction: Faction;
+    state: string;
+  } | null;
+
   // 操作方法
   initializeGame: (name: string, party: Party, faction: Faction, state: string) => void;
+  restartGame: () => void;
+  returnToMenu: () => void;
   nextTurn: () => void;
   selectEventOption: (eventId: string, optionId: string) => void;
   dismissEvent: (eventId: string) => void;
@@ -184,8 +194,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   promotionEngine: new PromotionEngine(),
   failureEngine: new FailureEngine(),
 
+  // 初始游戏参数
+  initialGameParams: null,
+
   // ==================== 初始化游戏 ====================
   initializeGame: (name: string, party: Party, faction: Faction, state: string) => {
+    // 保存初始参数用于重新开始
+    set({ initialGameParams: { name, party, faction, state } });
     const seed = Date.now();
     const player = createInitialPlayer(name, party, faction, state);
     
@@ -580,6 +595,88 @@ export const useGameStore = create<GameStore>((set, get) => ({
       });
     } catch (e) {
       console.error('Failed to load game:', e);
+    }
+  },
+
+  // ==================== 重新开始游戏 ====================
+  restartGame: () => {
+    const { initialGameParams } = get();
+    if (!initialGameParams) {
+      console.error('No initial game params found');
+      return;
+    }
+
+    const { name, party, faction, state } = initialGameParams;
+    
+    // 使用相同的参数重新初始化游戏
+    const seed = Date.now();
+    const player = createInitialPlayer(name, party, faction, state);
+    
+    const eventEngine = new EventEngine(seed);
+    const eventExecutor = new EventExecutor(seed);
+    const electionEngine = new ElectionEngine(seed);
+    const opponentAI = new OpponentAI(seed);
+
+    // 生成初始对手
+    const opponents = opponentAI.generateOpponents(player, 3);
+
+    // 生成初始事件
+    const initialEvents = eventEngine.generateEvents(
+      player,
+      createInitialNationalState(),
+      3
+    );
+
+    set({
+      status: GameStatus.IN_PROGRESS,
+      seed,
+      player,
+      nationalState: createInitialNationalState(),
+      parties: {
+        democrat: createInitialPartyData(Party.DEMOCRAT),
+        republican: createInitialPartyData(Party.REPUBLICAN),
+      },
+      opponents,
+      currentEvents: initialEvents,
+      eventHistory: [],
+      messageLog: [],
+      eventEngine,
+      eventExecutor,
+      electionEngine,
+      opponentAI,
+    });
+
+    // 保存游戏
+    get().saveGame();
+  },
+
+  // ==================== 返回主菜单 ====================
+  returnToMenu: () => {
+    set({
+      status: GameStatus.CHARACTER_CREATION,
+      seed: Date.now(),
+      player: createInitialPlayer('Player', Party.DEMOCRAT, Faction.MODERATE, 'California'),
+      nationalState: createInitialNationalState(),
+      parties: {
+        democrat: createInitialPartyData(Party.DEMOCRAT),
+        republican: createInitialPartyData(Party.REPUBLICAN),
+      },
+      opponents: [],
+      currentEvents: [],
+      eventHistory: [],
+      messageLog: [],
+      eventEngine: null,
+      eventExecutor: null,
+      electionEngine: null,
+      opponentAI: null,
+      initialGameParams: null,
+    });
+
+    // 清除保存的游戏
+    try {
+      localStorage.removeItem('politicalGameSave');
+    } catch (e) {
+      console.error('Failed to clear saved game:', e);
     }
   },
 }));
