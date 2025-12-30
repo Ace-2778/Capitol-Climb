@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import Link from 'next/link';
 import { useGameStore } from '@/store/gameStore';
+import { useDecisionStore } from '@/store/decisionStore';
 import { GameStatus } from '@/types/game';
 import { CharacterCreation } from '@/components/CharacterCreation';
 import { GameOverScreen } from '@/components/GameOverScreen';
@@ -33,10 +35,30 @@ export default function Home() {
     loadGame,
   } = useGameStore();
 
+  const { getDecisionSummary, initializeDecisionSystem, generateNewBills, generateNewSpeeches } = useDecisionStore();
+  const decisionSummary = getDecisionSummary();
+
   // 加载保存的游戏
   useEffect(() => {
     loadGame();
   }, [loadGame]);
+
+  // 初始化决策系统
+  useEffect(() => {
+    if (status === GameStatus.IN_PROGRESS && player) {
+      initializeDecisionSystem(Date.now(), player.party);
+    }
+  }, [status, player, initializeDecisionSystem]);
+
+  // 处理下一回合（包含决策生成）
+  const handleNextTurn = () => {
+    nextTurn();
+    // 在回合推进后，尝试生成新的重大决策
+    if (player && nationalState) {
+      generateNewBills(player, nationalState.turn + 1);
+      generateNewSpeeches(player, nationalState.turn + 1);
+    }
+  };
 
   // 角色创建
   if (status === GameStatus.CHARACTER_CREATION) {
@@ -80,9 +102,27 @@ export default function Home() {
             </div>
             
             <div className="flex items-center gap-4">
+              {/* 重大决策入口 */}
+              <Link
+                href="/decisions"
+                className="relative px-6 py-2 rounded-lg font-semibold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg transition-all"
+              >
+                <div className="flex items-center gap-2">
+                  <span>📜 重大决策</span>
+                  {decisionSummary.pendingCount > 0 && (
+                    <span className="px-2 py-1 bg-white/20 rounded-full text-xs font-bold">
+                      {decisionSummary.pendingCount}
+                    </span>
+                  )}
+                </div>
+                {decisionSummary.highestUrgency === 'critical' && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                )}
+              </Link>
+
               {/* 下一回合按钮 */}
               <button
-                onClick={nextTurn}
+                onClick={handleNextTurn}
                 disabled={currentEvents.length > 0}
                 className={`px-6 py-2 rounded-lg font-semibold transition-all ${
                   currentEvents.length > 0
